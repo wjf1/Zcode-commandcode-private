@@ -1,0 +1,31 @@
+{
+  "name": "zcode-commandcode-private",
+  "version": "1.0.0",
+  "description": "Command Code Provider API integration for ZCode: live model catalog with SWR cache and circuit breaker, streaming generation, multi-account rotation on 429/401, and a per-account usage/credits/plan dashboard. Ported from wjf1/dsh-commandcode (MIT).",
+  "description_i18n": {
+    "zh-CN": "面向 ZCode 的 Command Code Provider API 集成：带 SWR 缓存与断路器的实时模型目录、流式生成、429/401 多账号自动轮换、按账号的用量/额度/套餐看板。移植自 wjf1/dsh-commandcode (MIT)。"
+  },
+  "author": {
+    "name": "ZCode user"
+  },
+  "license": "MIT",
+  "keywords": [
+    "commandcode",
+    "llm-provider",
+    "models",
+    "usage",
+    "mcp"
+  ],
+  "mcpServers": {
+    "commandcode": {
+      "enabled": true,
+      "command": "node",
+      "args": [
+        "${ZCODE_PLUGIN_ROOT}/mcp/server.mjs"
+      ],
+      "env": {}
+    }
+  },
+  "commands": "commands",
+  "skills": "skills"
+}

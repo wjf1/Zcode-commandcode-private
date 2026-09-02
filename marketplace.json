@@ -1,0 +1,13 @@
+{
+  "name": "zcode-commandcode-private",
+  "version": 1,
+  "description": "Command Code Provider API integration for ZCode: model catalog, streaming generation, multi-account rotation, usage dashboard, and a local web panel.",
+  "plugins": [
+    {
+      "name": "zcode-commandcode-private",
+      "version": "1.0.0",
+      "description": "Command Code Provider API integration for ZCode: live model catalog (SWR cache + circuit breaker), streaming generation, multi-account rotation on 429/401, usage/credits/plan report, /commandcode & /commandcode-panel commands, and a local web dashboard at http://127.0.0.1:18400.",
+      "source": "."
+    }
+  ]
+}

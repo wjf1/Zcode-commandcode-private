@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Command Code 面板 · zcode-commandcode-private</title>
+<style>
+  :root {
+    --bg: #0b0e14;
+    --bg-soft: #10141d;
+    --card: #141927;
+    --card-hover: #1a2032;
+    --border: rgba(255, 255, 255, 0.07);
+    --border-strong: rgba(255, 255, 255, 0.13);
+    --text: #e8ecf4;
+    --text-dim: #9aa4b8;
+    --text-faint: #64708a;
+    --accent-a: #7c5cff;
+    --accent-b: #22d3ee;
+    --accent-c: #f472b6;
+    --good: #34d399;
+    --warn: #fbbf24;
+    --bad: #f87171;
+    --track: rgba(255, 255, 255, 0.07);
+    --shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+    --glow-opacity: 0.16;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f4f6fb;
+      --bg-soft: #eef1f8;
+      --card: #ffffff;
+      --card-hover: #ffffff;
+      --border: rgba(15, 23, 42, 0.08);
+      --border-strong: rgba(15, 23, 42, 0.16);
+      --text: #1a2233;
+      --text-dim: #5b6b85;
+      --text-faint: #8b97ad;
+      --track: rgba(15, 23, 42, 0.07);
+      --shadow: 0 8px 28px rgba(30, 41, 72, 0.10);
+      --glow-opacity: 0.10;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scrollbar-gutter: stable; }
+  body {
+    font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-variant-numeric: tabular-nums;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(700px 420px at 8% -6%, rgba(124, 92, 255, var(--glow-opacity)), transparent 65%),
+      radial-gradient(640px 400px at 96% -2%, rgba(34, 211, 238, calc(var(--glow-opacity) * 0.9)), transparent 65%),
+      radial-gradient(800px 500px at 50% 110%, rgba(244, 114, 182, calc(var(--glow-opacity) * 0.5)), transparent 65%);
+  }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 24px 64px; }
+
+  /* ---------- header ---------- */
+  header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+  .logo {
+    width: 46px; height: 46px; border-radius: 14px; flex: none;
+    background: conic-gradient(from 210deg, var(--accent-a), var(--accent-b), var(--accent-c), var(--accent-a));
+    display: grid; place-items: center;
+    box-shadow: 0 6px 22px rgba(124, 92, 255, 0.35);
+  }
+  .logo svg { width: 24px; height: 24px; }
+  .title-block { flex: 1; min-width: 220px; }
+  h1 { font-size: 21px; font-weight: 700; letter-spacing: 0.2px; }
+  h1 .grad {
+    background: linear-gradient(100deg, var(--accent-a), var(--accent-b));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .subtitle { color: var(--text-faint); font-size: 12.5px; margin-top: 3px; }
+  .header-actions { display: flex; align-items: center; gap: 10px; }
+  .pill {
+    font-size: 12px; color: var(--text-dim);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 6px 12px; background: var(--card);
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--good); }
+  .dot.live { animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .btn {
+    border: 1px solid var(--border-strong); background: var(--card); color: var(--text);
+    border-radius: 10px; padding: 8px 14px; font-size: 13px; cursor: pointer;
+    transition: all 0.18s ease; font-family: inherit;
+  }
+  .btn:hover { background: var(--card-hover); transform: translateY(-1px); box-shadow: var(--shadow); }
+  .btn:active { transform: translateY(0); }
+  .btn.primary {
+    background: linear-gradient(100deg, var(--accent-a), var(--accent-b));
+    border: none; color: #fff; font-weight: 600;
+  }
+  .btn.primary:hover { filter: brightness(1.1); }
+  .btn:disabled { opacity: 0.55; cursor: wait; transform: none; }
+
+  /* ---------- tabs ---------- */
+  .tabs {
+    display: inline-flex; gap: 4px; padding: 4px;
+    background: var(--bg-soft); border: 1px solid var(--border);
+    border-radius: 12px; margin-bottom: 26px;
+  }
+  .tab {
+    border: none; background: transparent; color: var(--text-dim);
+    font-size: 13.5px; font-weight: 600; font-family: inherit;
+    padding: 8px 18px; border-radius: 9px; cursor: pointer;
+    transition: all 0.18s ease;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active {
+    background: var(--card); color: var(--text);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  }
+
+  .view { display: none; }
+  .view.active { display: block; animation: fadein 0.25s ease; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* ---------- cards & grids ---------- */
+  .grid { display: grid; gap: 16px; }
+  .grid.hero { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: 16px; }
+  .grid.stats { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 16px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 18px 20px;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    position: relative; overflow: hidden;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--border-strong); }
+  .card .label { font-size: 12px; color: var(--text-faint); font-weight: 600; letter-spacing: 0.4px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+  .big { font-size: 30px; font-weight: 750; letter-spacing: -0.5px; }
+  .big small { font-size: 13px; font-weight: 500; color: var(--text-dim); margin-left: 5px; letter-spacing: 0; }
+  .dim { color: var(--text-dim); font-size: 12.5px; margin-top: 6px; }
+  .accent-text {
+    background: linear-gradient(100deg, var(--accent-a), var(--accent-b));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .stat-num { font-size: 21px; font-weight: 700; }
+  .stat-card .label { margin-bottom: 4px; }
+
+  /* progress bars */
+  .bar { height: 9px; background: var(--track); border-radius: 999px; overflow: hidden; margin-top: 12px; }
+  .bar > i {
+    display: block; height: 100%; border-radius: 999px; width: 0%;
+    background: linear-gradient(90deg, var(--accent-a), var(--accent-b));
+    transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .bar > i.hot { background: linear-gradient(90deg, var(--warn), var(--bad)); }
+  .bar-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; font-size: 12.5px; color: var(--text-dim); }
+  .bar-row b { color: var(--text); font-weight: 650; }
+
+  /* chips & badges */
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .chip {
+    font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--text-dim); background: var(--bg-soft);
+  }
+  .chip.plan-go { color: #7dd3fc; border-color: rgba(125, 211, 252, 0.35); background: rgba(125, 211, 252, 0.08); }
+  .chip.plan-pro { color: #c4b5fd; border-color: rgba(196, 181, 253, 0.35); background: rgba(196, 181, 253, 0.08); }
+  .chip.plan-provider { color: #fda4af; border-color: rgba(253, 164, 175, 0.35); background: rgba(253, 164, 175, 0.08); }
+  .chip.ok { color: var(--good); border-color: rgba(52, 211, 153, 0.35); background: rgba(52, 211, 153, 0.08); }
+  .chip.bad { color: var(--bad); border-color: rgba(248, 113, 113, 0.35); background: rgba(248, 113, 113, 0.08); }
+  .chip.vision { color: var(--accent-b); border-color: rgba(34, 211, 238, 0.3); background: rgba(34, 211, 238, 0.07); }
+  .chip.reason { color: var(--accent-c); border-color: rgba(244, 114, 182, 0.3); background: rgba(244, 114, 182, 0.07); }
+
+  /* filter toolbar */
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
+  .search {
+    flex: 1; min-width: 220px; border: 1px solid var(--border-strong);
+    background: var(--card); color: var(--text); border-radius: 10px;
+    padding: 9px 14px; font-size: 13.5px; font-family: inherit; outline: none;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  }
+  .search:focus { border-color: var(--accent-a); box-shadow: 0 0 0 3px rgba(124, 92, 255, 0.18); }
+  .filter-chip {
+    border: 1px solid var(--border-strong); background: var(--card); color: var(--text-dim);
+    border-radius: 999px; padding: 7px 15px; font-size: 12.5px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s ease; font-family: inherit;
+  }
+  .filter-chip:hover { color: var(--text); }
+  .filter-chip.on {
+    background: linear-gradient(100deg, rgba(124, 92, 255, 0.22), rgba(34, 211, 238, 0.22));
+    border-color: transparent; color: var(--text);
+  }
+
+  /* model grid */
+  .model-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); }
+  .model-card { padding: 16px 17px; }
+  .model-card .m-name { font-size: 14.5px; font-weight: 650; margin-bottom: 3px; }
+  .model-card .m-id { font-family: "Cascadia Code", Consolas, monospace; font-size: 11.5px; color: var(--text-faint); word-break: break-all; }
+  .model-card .m-ctx { margin-top: 12px; font-size: 13px; color: var(--text-dim); }
+  .model-card .m-ctx b { color: var(--text); font-size: 15px; }
+
+  /* tables */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--text-faint); font-size: 11.5px; font-weight: 600; letter-spacing: 0.4px; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--border); color: var(--text-dim); }
+  td:first-child { color: var(--text); font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  code, .mono { font-family: "Cascadia Code", Consolas, monospace; font-size: 12px; }
+
+  /* banners */
+  .banner {
+    border-radius: 14px; padding: 16px 18px; margin-bottom: 16px;
+    border: 1px solid rgba(248, 113, 113, 0.35); background: rgba(248, 113, 113, 0.07);
+  }
+  .banner .code-tag {
+    display: inline-block; font-family: Consolas, monospace; font-size: 11.5px;
+    color: var(--bad); border: 1px solid rgba(248, 113, 113, 0.4);
+    border-radius: 6px; padding: 2px 8px; margin-bottom: 8px;
+  }
+  .banner p { color: var(--text-dim); font-size: 13px; line-height: 1.6; }
+  .banner .hint { margin-top: 8px; color: var(--text); }
+  .banner.warn { border-color: rgba(251, 191, 36, 0.35); background: rgba(251, 191, 36, 0.06); }
+  .banner.warn .code-tag { color: var(--warn); border-color: rgba(251, 191, 36, 0.4); }
+
+  .section-title { font-size: 14px; font-weight: 700; margin: 26px 0 12px; color: var(--text); }
+  .section-title:first-child { margin-top: 0; }
+
+  .skeleton { color: var(--text-faint); font-size: 13px; padding: 40px 0; text-align: center; }
+  .spin {
+    display: inline-block; width: 14px; height: 14px; vertical-align: -2px;
+    border: 2px solid var(--track); border-top-color: var(--accent-a);
+    border-radius: 50%; animation: rot 0.8s linear infinite; margin-right: 8px;
+  }
+  @keyframes rot { to { transform: rotate(360deg); } }
+
+  footer {
+    margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--border);
+    color: var(--text-faint); font-size: 12px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="8 6 3 12 8 18"/><polyline points="16 6 21 12 16 18"/>
+      </svg>
+    </div>
+    <div class="title-block">
+      <h1><span class="grad">Command Code</span> 控制面板</h1>
+      <div class="subtitle" id="subtitle">zcode-commandcode-private · 正在连接…</div>
+    </div>
+    <div class="header-actions">
+      <span class="pill"><span class="dot live"></span><span id="refresh-in">自动刷新 60s</span></span>
+      <button class="btn primary" id="refresh-all">立即刷新</button>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-view="usage">用量与额度</button>
+    <button class="tab" data-view="models">模型目录</button>
+    <button class="tab" data-view="status">运行诊断</button>
+  </div>
+
+  <!-- ============ 用量 ============ -->
+  <div class="view active" id="view-usage"><div class="skeleton"><span class="spin"></span>正在获取用量数据…</div></div>
+
+  <!-- ============ 模型 ============ -->
+  <div class="view" id="view-models">
+    <div class="toolbar">
+      <input class="search" id="model-search" type="search" placeholder="搜索模型 id 或名称…">
+      <span id="model-filters" style="display:flex;gap:8px;flex-wrap:wrap"></span>
+      <button class="btn" id="models-refresh">强制刷新目录</button>
+    </div>
+    <div id="models-meta" class="subtitle" style="margin-bottom:14px"></div>
+    <div class="model-grid" id="model-grid"></div>
+  </div>
+
+  <!-- ============ 诊断 ============ -->
+  <div class="view" id="view-status"><div class="skeleton"><span class="spin"></span>正在读取本地诊断…</div></div>
+
+  <footer>
+    <span>zcode-commandcode-private v1.0 · 本地面板仅监听 127.0.0.1,数据不外发</span>
+    <span class="mono" id="foot-apibase"></span>
+  </footer>
+</div>
+
+<script>
+"use strict";
+const $ = (s, el) => (el || document).querySelector(s);
+const $$ = (s, el) => [...(el || document).querySelectorAll(s)];
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmtNum = (n, d = 2) => Number(n ?? 0).toLocaleString("zh-CN", { maximumFractionDigits: d });
+const fmtInt = (n) => Number(n ?? 0).toLocaleString("zh-CN");
+const fmtDate = (ms) => ms > 0 ? new Date(ms).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+
+let usageData = null, statusData = null, modelsData = null;
+let modelsLoading = false;
+const REFRESH_SECS = 60;
+let countdown = REFRESH_SECS;
+
+async function api(path) {
+  const res = await fetch(path);
+  const data = await res.json();
+  if (data && data.error) throw data.error;
+  return data;
+}
+
+/* ---------------- usage view ---------------- */
+function windowCard(label, w, resetHint) {
+  if (!w) return "";
+  const pct = w.cap > 0 ? Math.min(100, (w.used / w.cap) * 100) : 0;
+  const hot = w.exceeded || pct >= 85;
+  return `
+    <div class="card">
+      <div class="label"><span>${esc(label)}</span><span class="chip ${w.exceeded ? "bad" : "ok"}">${w.exceeded ? "已耗尽" : "正常"}</span></div>
+      <div class="big">${fmtNum(w.used, w.cap > 0 && w.cap <= 10 ? 2 : 1)}<small>/ ${fmtNum(w.cap, 2)}</small></div>
+      <div class="bar"><i class="${hot ? "hot" : ""}" data-w="${pct}"></i></div>
+      <div class="bar-row"><span>已用 ${fmtNum(pct, 1)}%</span><b>${resetHint}</b></div>
+    </div>`;
+}
+function countdownTo(resetAt) {
+  if (!resetAt || resetAt <= Date.now()) return "";
+  let s = Math.round((resetAt - Date.now()) / 1000);
+  const h = Math.floor(s / 3600); s %= 3600;
+  const m = Math.floor(s / 60);
+  return h > 0 ? `${h} 小时 ${m} 分后重置` : m > 0 ? `${m} 分后重置` : "即将重置";
+}
+function renderUsage() {
+  const view = $("#view-usage");
+  if (!usageData) return;
+  const { report, accounts, activeAccount } = usageData;
+
+  if (report && report.error) {
+    view.innerHTML = `<div class="banner"><span class="code-tag">${esc(report.error.code)}</span><p>${esc(report.error.message)}</p><p class="hint">💡 ${esc(report.error.hint)}</p></div>`;
+    return;
+  }
+  const credits = report.credits || {};
+  const usage = report.usage || {};
+  const plan = report.plan || {};
+  const fh = credits.fiveHour || {}, wk = credits.weekly || {};
+  const remaining = (credits.monthlyCredits || 0) + (credits.purchasedCredits || 0) + (credits.freeCredits || 0);
+
+  const accountChips = accounts.length > 1 ? `
+    <div class="section-title">账号</div>
+    <div class="chips" style="margin-bottom:16px">
+      ${accounts.map(a => `<span class="chip ${a.id === activeAccount ? "ok" : ""}">${esc(a.label || a.id)} · ${esc(a.state)}${a.id === activeAccount ? " · 当前" : ""}</span>`).join("")}
+    </div>` : "";
+
+  const blocked = report.blocked ? `
+    <div class="banner warn"><span class="code-tag">BLOCKED · ${esc(report.blocked)}</span>
+      <p>${{ "invalid-key": "API key 无效,所有用量端点均返回 401。", "service-unavailable": "Command Code 服务暂不可用(5xx),稍后重试。", "network": "网络异常,无法连接到 Command Code API。" }[report.blocked] || "用量查询被阻断。"}</p></div>` : "";
+
+  const failures = (report.failures || []).length ? `
+    <div class="section-title">端点失败明细(按端点降级)</div>
+    <div class="card"><table>${(report.failures || []).map(f => `<tr><td class="mono" style="font-weight:400">${esc(f)}</td></tr>`).join("")}</table></div>` : "";
+
+  view.innerHTML = `
+    ${blocked}
+    ${accountChips}
+    <div class="grid hero">
+      <div class="card">
+        <div class="label"><span>订阅套餐</span><span class="chip ${plan.status === "active" ? "ok" : "bad"}">${esc(plan.status || "—")}</span></div>
+        <div class="big accent-text">${esc(plan.name || "—")}</div>
+        <div class="dim">月赠 ${fmtNum(plan.monthlyCredits, 0)} credits · 期末 ${fmtDate(plan.currentPeriodEnd)}</div>
+      </div>
+      <div class="card">
+        <div class="label"><span>可用余额</span></div>
+        <div class="big">${fmtNum(remaining)}<small>credits</small></div>
+        <div class="dim">月度 ${fmtNum(credits.monthlyCredits, 2)} · 购买 ${fmtNum(credits.purchasedCredits, 2)} · 免费 ${fmtNum(credits.freeCredits, 2)}</div>
+      </div>
+      ${windowCard("5 小时窗口", fh, countdownTo(fh.resetAt))}
+      ${windowCard("周窗口", wk, countdownTo(wk.resetAt))}
+    </div>
+    <div class="grid stats">
+      <div class="card stat-card"><div class="label">请求总数</div><div class="stat-num">${fmtInt(usage.totalCount)}</div><div class="dim">本期 ${esc(usage.periodBasis || "—")}</div></div>
+      <div class="card stat-card"><div class="label">成功率</div><div class="stat-num" style="color:var(--good)">${fmtNum(usage.successRate, 1)}%</div><div class="dim">失败 ${fmtInt(usage.failedCount)} 次</div></div>
+      <div class="card stat-card"><div class="label">Tokens 输入</div><div class="stat-num">${fmtInt(usage.totalTokensIn)}</div></div>
+      <div class="card stat-card"><div class="label">Tokens 输出</div><div class="stat-num">${fmtInt(usage.totalTokensOut)}</div></div>
+      <div class="card stat-card"><div class="label">消耗 credits</div><div class="stat-num">${fmtNum(usage.totalCredits, 3)}</div></div>
+    </div>
+    ${failures}`;
+  requestAnimationFrame(() => $$("#view-usage .bar > i").forEach(i => { i.style.width = i.dataset.w + "%"; }));
+}
+
+/* ---------------- models view ---------------- */
+const PLAN_FILTERS = [["all", "全部"], ["go", "Go"], ["pro", "Pro"], ["provider", "Provider"], ["none", "无档位"]];
+let planFilter = "all";
+function renderModelFilters() {
+  $("#model-filters").innerHTML = PLAN_FILTERS
+    .map(([v, t]) => `<button class="filter-chip ${planFilter === v ? "on" : ""}" data-plan="${v}">${t}</button>`).join("");
+  $$("#model-filters .filter-chip").forEach(b => b.onclick = () => { planFilter = b.dataset.plan; renderModelFilters(); renderModels(); });
+}
+function renderModels() {
+  if (!modelsData) return;
+  const q = ($("#model-search").value || "").trim().toLowerCase();
+  const all = modelsData.models || [];
+  const list = all.filter(m => {
+    if (planFilter === "none" && m.plan) return false;
+    if (planFilter !== "all" && planFilter !== "none" && m.plan !== planFilter[0].toUpperCase() + planFilter.slice(1)) return false;
+    if (q && !(m.id.toLowerCase().includes(q) || (m.name || "").toLowerCase().includes(q))) return false;
+    return true;
+  });
+  $("#models-meta").textContent = `共 ${all.length} 个模型,当前显示 ${list.length} 个 · 目录${modelsData.catalog.fresh ? "新鲜" : "缓存"} · 更新于 ${fmtDate(modelsData.catalog.fetchedAt)} · ${modelsData.planFiltered ? "已按套餐过滤" : "未过滤套餐"}`;
+  $("#model-grid").innerHTML = list.map(m => `
+    <div class="card model-card">
+      <div class="m-name">${esc(m.name)}</div>
+      <div class="m-id">${esc(m.id)}</div>
+      <div class="m-ctx"><b>${esc(m.contextLabel || Math.round(m.contextWindow / 1000) + "K")}</b> 上下文</div>
+      <div class="chips">
+        ${m.plan ? `<span class="chip plan-${m.plan.toLowerCase()}">${esc(m.plan)}</span>` : ""}
+        ${m.vision ? `<span class="chip vision">Vision</span>` : ""}
+        ${m.reasoningEfforts ? `<span class="chip reason">Reasoning</span>` : ""}
+      </div>
+    </div>`).join("") || `<div class="skeleton">没有匹配的模型</div>`;
+}
+async function loadModels(force) {
+  if (modelsLoading) return;
+  modelsLoading = true;
+  const btn = $("#models-refresh"); if (btn) btn.disabled = true;
+  try {
+    modelsData = await api(`/api/models${force ? "?force=1" : ""}`);
+    renderModels();
+  } catch (e) {
+    $("#model-grid").innerHTML = `<div class="banner" style="grid-column:1/-1"><span class="code-tag">${esc(e.code || "ERROR")}</span><p>${esc(e.message || "")}</p><p class="hint">💡 ${esc(e.hint || "")}</p></div>`;
+  } finally {
+    modelsLoading = false;
+    if (btn) btn.disabled = false;
+  }
+}
+
+/* ---------------- status view ---------------- */
+function renderStatus() {
+  if (!statusData) return;
+  const s = statusData;
+  $("#view-status").innerHTML = `
+    <div class="grid hero">
+      <div class="card"><div class="label">连接</div>
+        <div class="stat-num mono" style="font-size:15px;word-break:break-all">${esc(s.apiBase)}</div>
+        <div class="chips">
+          <span class="chip ${s.authFilePresent ? "ok" : ""}">auth.json ${s.authFilePresent ? "已配置" : "缺失"}</span>
+          <span class="chip ${s.env.apiKeySet ? "ok" : ""}">环境变量 key ${s.env.apiKeySet ? "已设" : "未设"}</span>
+          <span class="chip ${s.env.accountsJsonSet ? "ok" : ""}">多账号 ${s.env.accountsJsonSet ? "已启" : "未启"}</span>
+        </div></div>
+      <div class="card"><div class="label">模型目录</div>
+        <div class="stat-num">${fmtInt(s.catalog.count)}<small>个模型</small></div>
+        <div class="chips">
+          <span class="chip ${s.catalog.fresh ? "ok" : ""}">${s.catalog.fresh ? "缓存新鲜" : "使用缓存"}</span>
+          <span class="chip">断路器 ${esc(s.catalog.circuit)}</span>
+        </div>
+        <div class="dim">更新于 ${fmtDate(s.catalog.fetchedAt)}</div></div>
+      <div class="card"><div class="label">超时与重试</div>
+        <table>
+          <tr><td>首字节超时</td><td class="mono">${s.env.requestTimeoutMs / 1000}s</td></tr>
+          <tr><td>流空闲超时</td><td class="mono">${s.env.streamIdleTimeoutMs / 1000}s</td></tr>
+          <tr><td>重试次数</td><td class="mono">${s.env.maxRetries}</td></tr>
+          <tr><td>套餐过滤</td><td class="mono">${s.env.filterModelsByPlan ? "开" : "关"}</td></tr>
+        </table></div>
+    </div>
+    <div class="section-title">账号池(429/401 自动轮换)</div>
+    <div class="card"><table>
+      <tr><th>槽位</th><th>标签</th><th>状态</th><th>凭据指纹</th></tr>
+      ${s.accounts.map(a => `<tr><td class="mono" style="font-weight:400">${esc(a.id)}</td><td>${esc(a.label)}</td>
+        <td><span class="chip ${a.state === "ok" ? "ok" : a.state === "unconfigured" ? "" : "bad"}">${esc(a.state)}</span></td>
+        <td class="mono" style="font-weight:400">${esc(a.keyFingerprint || "—")}</td></tr>`).join("")}
+    </table></div>`;
+}
+
+/* ---------------- data loading ---------------- */
+async function loadUsage() {
+  try { usageData = await api("/api/usage"); }
+  catch (e) { usageData = { report: { error: e } }; }
+  renderUsage();
+}
+async function loadStatus() {
+  try { statusData = await api("/api/status"); } catch (e) { return; }
+  renderStatus();
+  $("#subtitle").textContent = `zcode-commandcode-private · ${statusData.accounts.filter(a => a.configured).length} 个账号已配置`;
+  $("#foot-apibase").textContent = statusData.apiBase;
+}
+
+/* tabs */
+function activateTab(name) {
+  const t = $$(".tab").find(x => x.dataset.view === name);
+  if (!t) return;
+  $$(".tab").forEach(x => x.classList.remove("active"));
+  t.classList.add("active");
+  $$(".view").forEach(v => v.classList.remove("active"));
+  $("#view-" + name).classList.add("active");
+  if (name === "models" && !modelsData && !modelsLoading) loadModels(false);
+}
+$$(".tab").forEach(t => t.onclick = () => { activateTab(t.dataset.view); history.replaceState(null, "", "#" + t.dataset.view); });
+// deep-link: #models / #status opens that tab directly
+if (location.hash) activateTab(location.hash.slice(1));
+
+$("#model-search").addEventListener("input", renderModels);
+$("#models-refresh").onclick = () => loadModels(true);
+$("#refresh-all").onclick = () => { countdown = REFRESH_SECS; loadUsage(); loadStatus(); if (modelsData) loadModels(false); };
+
+/* auto refresh with visible countdown */
+setInterval(() => {
+  countdown -= 1;
+  if (countdown <= 0) { countdown = REFRESH_SECS; loadUsage(); loadStatus(); }
+  $("#refresh-in").textContent = `自动刷新 ${countdown}s`;
+}, 1000);
+setInterval(() => { renderUsage(); }, 1000); // keep countdowns live
+
+loadUsage(); loadStatus();
+</script>
+</body>
+</html>
