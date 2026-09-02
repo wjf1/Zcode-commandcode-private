@@ -20,7 +20,18 @@ ZCode 插件：把 [Command Code](https://commandcode.ai) Provider API 接入 ZC
 
 ## 安装
 
-### 一键安装（推荐）
+### 方式一：插件市场（在线）
+
+本仓库同时是一个 ZCode 插件 marketplace（根目录 `marketplace.json`）。在 ZCode 的
+**Settings → Plugin Management → Discover → `+`** 中添加 GitHub 仓库：
+
+```
+wjf1/Zcode-commandcode-private
+```
+
+然后在插件卡片上点 **Get** 安装即可。
+
+### 方式二：一键安装（离线/本地）
 
 新电脑上只要有 Node.js >= 18，把本目录整个拷贝过去，然后：
 
