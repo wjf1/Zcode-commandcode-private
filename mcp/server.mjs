@@ -85,7 +85,12 @@ async function toolCall(name, args) {
 const PROTOCOL_VERSION = '2025-06-18'
 
 function send(message) {
-  process.stdout.write(JSON.stringify(message) + '\n')
+  const body = JSON.stringify(message)
+  if (framing === 'lsp') {
+    process.stdout.write(`Content-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}`)
+  } else {
+    process.stdout.write(body + '\n')
+  }
 }
 
 function toolErrorPayload(error) {
@@ -140,30 +145,73 @@ async function handleMessage(message) {
 }
 
 let inputBuffer = ''
+let framing = null // 'ndjson' (newline-delimited JSON, MCP stdio standard) | 'lsp' (Content-Length framing)
+let lspHeader = ''
+
+function dispatchLine(line) {
+  const trimmed = line.trim()
+  if (!trimmed) return
+  let message
+  try {
+    message = JSON.parse(trimmed)
+  } catch (error) {
+    log('ignoring malformed JSON line:', error.message)
+    return
+  }
+  handleMessage(message).then((response) => {
+    if (response !== undefined) send(response)
+  }).catch((error) => {
+    log('handler crashed:', error?.stack ?? error)
+    if (message?.id !== undefined) {
+      send({ id: message.id, result: toolErrorPayload(error) })
+    }
+  })
+}
+
+// Some hosts wrap stdio servers in LSP-style Content-Length frames; accept
+// both that and the MCP-standard newline-delimited JSON.
+function dispatchLsp(chunk) {
+  lspHeader += chunk
+  while (true) {
+    const headerEnd = lspHeader.indexOf('\r\n\r\n')
+    const altEnd = headerEnd < 0 ? lspHeader.indexOf('\n\n') : -1
+    if (headerEnd < 0 && altEnd < 0) return
+    const sepLen = headerEnd >= 0 ? 4 : 2
+    const header = lspHeader.slice(0, headerEnd >= 0 ? headerEnd : altEnd)
+    const m = /Content-Length:\s*(\d+)/i.exec(header)
+    if (!m) { // not actually LSP — fall back to ndjson for the whole buffer
+      framing = 'ndjson'
+      for (const line of lspHeader.split('\n')) dispatchLine(line)
+      lspHeader = ''
+      return
+    }
+    const length = Number(m[1])
+    const bodyStart = (headerEnd >= 0 ? headerEnd : altEnd) + sepLen
+    if (lspHeader.length - bodyStart < length) return // wait for full body
+    const body = lspHeader.slice(bodyStart, bodyStart + length)
+    lspHeader = lspHeader.slice(bodyStart + length)
+    dispatchLine(body)
+  }
+}
+
 process.stdin.setEncoding('utf-8')
 process.stdin.on('data', (chunk) => {
   inputBuffer += chunk
-  let nl
-  while ((nl = inputBuffer.indexOf('\n')) >= 0) {
-    const line = inputBuffer.slice(0, nl)
-    inputBuffer = inputBuffer.slice(nl + 1)
-    const trimmed = line.trim()
-    if (!trimmed) continue
-    let message
-    try {
-      message = JSON.parse(trimmed)
-    } catch (error) {
-      log('ignoring malformed JSON line:', error.message)
-      continue
+  if (framing === null) {
+    if (/^Content-Length:/im.test(inputBuffer) && /\r\n\r\n|\n\n/.test(inputBuffer)) framing = 'lsp'
+    else if (inputBuffer.includes('\n')) framing = 'ndjson'
+    else return // not enough data to detect framing yet
+  }
+  if (framing === 'lsp') {
+    dispatchLsp(inputBuffer)
+    inputBuffer = ''
+  } else {
+    let nl
+    while ((nl = inputBuffer.indexOf('\n')) >= 0) {
+      const line = inputBuffer.slice(0, nl)
+      inputBuffer = inputBuffer.slice(nl + 1)
+      dispatchLine(line)
     }
-    handleMessage(message).then((response) => {
-      if (response !== undefined) send(response)
-    }).catch((error) => {
-      log('handler crashed:', error?.stack ?? error)
-      if (message?.id !== undefined) {
-        send({ id: message.id, result: toolErrorPayload(error) })
-      }
-    })
   }
 })
 process.stdin.on('end', () => process.exit(0))
