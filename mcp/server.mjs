@@ -85,7 +85,9 @@ async function toolCall(name, args) {
 const PROTOCOL_VERSION = '2025-06-18'
 
 function send(message) {
-  const body = JSON.stringify(message)
+  // JSON-RPC 2.0 requires the jsonrpc member on EVERY response; the ZCode
+  // client validates strictly and drops responses without it.
+  const body = JSON.stringify({ jsonrpc: '2.0', ...message })
   if (framing === 'lsp') {
     process.stdout.write(`Content-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}`)
   } else {
